@@ -1,31 +1,18 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="8dp" android:background="#000000">
-    <com.retro.player.VinylView android:id="@+id/vinyl" android:layout_width="match_parent" android:layout_height="200dp"/>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical"
-        android:layout_marginTop="6dp" android:background="#102010">
-        <TextView android:id="@+id/title" android:text="NO TRACK" android:textColor="#33FF33" android:typeface="monospace"
-            android:textSize="15sp" android:singleLine="true" android:ellipsize="marquee" android:marqueeRepeatLimit="marquee_forever"
-            android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp"
-            android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"/>
-        <Button android:id="@+id/like" style="@style/Btn" android:text="&lt;3 LIKE" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-    </LinearLayout>
-    <SeekBar android:id="@+id/seek" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-    <TextView android:id="@+id/time" android:text="00:00 / 00:00" android:textColor="#33FF33" android:typeface="monospace"
-        android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"/>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center">
-        <Button android:id="@+id/prev" style="@style/Btn" android:text="|&lt;&lt;" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <Button android:id="@+id/play" style="@style/Btn" android:text="PLAY" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <Button android:id="@+id/next" style="@style/Btn" android:text="&gt;&gt;|" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-        <Button android:id="@+id/shuf" style="@style/Btn" android:text="SHUF:OFF" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-    </LinearLayout>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp">
-        <Button android:id="@+id/tab0" style="@style/Btn" android:text="ALL" android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"/>
-        <Button android:id="@+id/tab1" style="@style/Btn" android:text="&lt;3 LIKED" android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"/>
-        <Button android:id="@+id/tab2" style="@style/Btn" android:text="TOP PLAYED" android:layout_width="0dp" android:layout_weight="1" android:layout_height="40dp"/>
-    </LinearLayout>
-    <TextView android:id="@+id/empty" android:visibility="gone" android:padding="12dp" android:textColor="#33FF33" android:typeface="monospace"
-        android:text="> EMPTY. TAP &lt;3 LIKE OR LONG-PRESS A TRACK." android:layout_width="match_parent" android:layout_height="wrap_content"/>
-    <ListView android:id="@+id/list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
-        android:divider="#1A3A1A" android:dividerHeight="1dp"/>
-</LinearLayout>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <application android:label="Retro Player" android:theme="@style/AppTheme">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop"
+            android:screenOrientation="portrait" android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <service android:name=".PlayerService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
+    </application>
+</manifest>
