@@ -1,0 +1,21 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="12dp" android:background="#000000">
+    <TextView android:text="[ RETRO PLAYER ]" android:textColor="#33FF33" android:typeface="monospace"
+        android:textSize="20sp" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"/>
+    <TextView android:id="@+id/title" android:text="NO TRACK" android:textColor="#33FF33" android:typeface="monospace"
+        android:textSize="16sp" android:singleLine="true" android:ellipsize="marquee" android:marqueeRepeatLimit="marquee_forever"
+        android:focusable="true" android:focusableInTouchMode="true" android:background="#102010" android:padding="10dp"
+        android:layout_marginTop="8dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    <SeekBar android:id="@+id/seek" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"/>
+    <TextView android:id="@+id/time" android:text="00:00 / 00:00" android:textColor="#33FF33" android:typeface="monospace"
+        android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center"/>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center">
+        <Button android:id="@+id/prev" style="@style/Btn" android:text="|&lt;&lt;" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/play" style="@style/Btn" android:text="PLAY" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/next" style="@style/Btn" android:text="&gt;&gt;|" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        <Button android:id="@+id/shuf" style="@style/Btn" android:text="SHUF:OFF" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+    </LinearLayout>
+    <ListView android:id="@+id/list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:divider="#1A3A1A" android:dividerHeight="1dp" android:layout_marginTop="8dp"/>
+</LinearLayout>
