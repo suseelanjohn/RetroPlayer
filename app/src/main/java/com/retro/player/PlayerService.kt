@@ -4,6 +4,7 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.MediaPlayer
@@ -13,8 +14,9 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.widget.RemoteViews
 
-/** Owns the MediaPlayer so music keeps playing in the background, with notification + lock screen controls. */
+/** Owns the MediaPlayer: background playback, retro notification, lock screen + headset controls. */
 class PlayerService : Service(), AudioManager.OnAudioFocusChangeListener {
     inner class LocalBinder : Binder() { val service: PlayerService get() = this@PlayerService }
 
@@ -29,6 +31,7 @@ class PlayerService : Service(), AudioManager.OnAudioFocusChangeListener {
     var idx = -1; private set
     var current: Song? = null; private set
     var shuffle = false
+    var repeat = 0 // 0 off, 1 all, 2 one
     var onChange: (() -> Unit)? = null
     private var mp: MediaPlayer? = null
     private lateinit var session: MediaSession
@@ -45,6 +48,8 @@ class PlayerService : Service(), AudioManager.OnAudioFocusChangeListener {
         super.onCreate()
         nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         prefs = getSharedPreferences("retro", MODE_PRIVATE)
+        shuffle = prefs.getBoolean("shuffle", false)
+        repeat = prefs.getInt("repeat", 0)
         if (Build.VERSION.SDK_INT >= 26)
             nm.createNotificationChannel(NotificationChannel(CH, "Playback", NotificationManager.IMPORTANCE_LOW))
         session = MediaSession(this, "RetroPlayer")
@@ -79,7 +84,7 @@ class PlayerService : Service(), AudioManager.OnAudioFocusChangeListener {
             m.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK)
             m.setDataSource(this, current!!.uri)
             m.prepare()
-            m.setOnCompletionListener { next() }
+            m.setOnCompletionListener { onCompleted() }
             m.start()
         } catch (e: Exception) {
             m.release(); current = null; changed(); return
@@ -88,6 +93,14 @@ class PlayerService : Service(), AudioManager.OnAudioFocusChangeListener {
         val k = "pc_" + current!!.key
         prefs.edit().putInt(k, prefs.getInt(k, 0) + 1).apply()
         changed()
+    }
+
+    private fun onCompleted() {
+        when {
+            repeat == 2 -> play(queue, idx)
+            repeat == 0 && !shuffle && idx >= queue.size - 1 -> { mp?.seekTo(0); changed() }
+            else -> next()
+        }
     }
 
     fun resume() { mp?.let { if (!it.isPlaying) { it.start(); changed() } } }
@@ -126,20 +139,35 @@ class PlayerService : Service(), AudioManager.OnAudioFocusChangeListener {
     private fun updateNotification() {
         val s = current ?: return
         val b = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(this, CH) else Notification.Builder(this)
-        b.setSmallIcon(android.R.drawable.ic_media_play)
-            .setContentTitle(s.title)
+        b.setSmallIcon(R.drawable.ic_disc)
+            .setContentTitle(s.title.uppercase())
             .setShowWhen(false)
+            .setColor(Color.parseColor("#33FF33"))
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(playing)
             .setContentIntent(PendingIntent.getActivity(this, 0,
                 Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), pf()))
             .setDeleteIntent(act(A_STOP))
-            .addAction(android.R.drawable.ic_media_previous, "Previous", act(A_PREV))
-            .addAction(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                if (playing) "Pause" else "Play", act(A_TOGGLE))
-            .addAction(android.R.drawable.ic_media_next, "Next", act(A_NEXT))
-            .setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken).setShowActionsInCompactView(0, 1, 2))
-        val n = b.build()
+        val n: Notification
+        if (Build.VERSION.SDK_INT >= 24) {
+            // Newer Android: system media notification with dark-green pixel icons
+            b.addAction(R.drawable.n_prev, "Previous", act(A_PREV))
+                .addAction(if (playing) R.drawable.n_pause else R.drawable.n_play, if (playing) "Pause" else "Play", act(A_TOGGLE))
+                .addAction(R.drawable.n_next, "Next", act(A_NEXT))
+                .setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken).setShowActionsInCompactView(0, 1, 2))
+            n = b.build()
+        } else {
+            // Android 5/6: fully custom black + green CRT notification (also shown on the lock screen)
+            val rv = RemoteViews(packageName, R.layout.notif)
+            rv.setTextViewText(R.id.n_title, s.title.uppercase())
+            rv.setImageViewResource(R.id.n_play, if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+            rv.setOnClickPendingIntent(R.id.n_prev, act(A_PREV))
+            rv.setOnClickPendingIntent(R.id.n_play, act(A_TOGGLE))
+            rv.setOnClickPendingIntent(R.id.n_next, act(A_NEXT))
+            n = b.build()
+            n.contentView = rv
+            n.bigContentView = rv
+        }
         try {
             if (playing) startForeground(ID, n) else { stopForeground(false); nm.notify(ID, n) }
         } catch (e: Exception) { nm.notify(ID, n) }

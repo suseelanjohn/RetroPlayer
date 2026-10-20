@@ -13,6 +13,7 @@ class VinylView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) :
     interface Listener { fun onDrop(); fun onLift() }
 
     var listener: Listener? = null
+    var speed = 200f
     var needleDown = false
         private set
 
@@ -56,7 +57,7 @@ class VinylView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) :
 
     override fun onDraw(cv: Canvas) {
         val now = System.nanoTime()
-        if (needleDown && last != 0L) rot = (rot + min((now - last) / 1e9f, 0.05f) * 200f) % 360f
+        if (needleDown && last != 0L) rot = (rot + min((now - last) / 1e9f, 0.05f) * speed) % 360f
         last = if (needleDown) now else 0L
         cv.drawColor(Color.BLACK)
 
@@ -93,10 +94,6 @@ class VinylView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) :
         cv.drawText(if (needleDown) "> NOW SPINNING" else "> DRAG NEEDLE ONTO DISC", 8 * dp, height - 8 * dp, p)
         p.style = Paint.Style.STROKE; p.strokeWidth = dp; p.color = dim
         cv.drawRect(0.5f * dp, 0.5f * dp, width - 0.5f * dp, height - 0.5f * dp, p)
-        // CRT scanlines
-        p.style = Paint.Style.FILL; p.color = Color.argb(70, 0, 0, 0)
-        var y = 0f
-        while (y < height) { cv.drawRect(0f, y, width.toFloat(), y + dp, p); y += 3 * dp }
 
         if (needleDown) postInvalidateOnAnimation()
     }
