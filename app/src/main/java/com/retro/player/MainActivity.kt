@@ -14,6 +14,7 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.os.*
 import android.provider.MediaStore
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -34,6 +35,7 @@ class MainActivity : Activity(), VinylView.Listener {
     private lateinit var vinyl: VinylView
     private lateinit var titleV: TextView
     private lateinit var timeV: TextView
+    private lateinit var trackNo: TextView
     private lateinit var seek: SeekBar
     private lateinit var playB: ImageButton
     private lateinit var likeB: ImageButton
@@ -43,6 +45,7 @@ class MainActivity : Activity(), VinylView.Listener {
     private lateinit var empty2: View
     private lateinit var empty3: View
     private lateinit var settingsBox: LinearLayout
+    private lateinit var heads: List<TextView>
     private lateinit var pages: List<View>
     private lateinit var navs: List<View>
     private lateinit var navIcons: List<ImageView>
@@ -50,6 +53,8 @@ class MainActivity : Activity(), VinylView.Listener {
     private lateinit var adapters: List<BaseAdapter>
     private val rows = ArrayList<() -> Unit>()
     private val green = Color.parseColor("#33FF33")
+    private val dimGreen = Color.parseColor("#1F7A1F")
+    private val glow = Color.argb(128, 51, 255, 51)
 
     private val conn = object : ServiceConnection {
         override fun onServiceConnected(n: ComponentName, b: IBinder) {
@@ -78,7 +83,7 @@ class MainActivity : Activity(), VinylView.Listener {
     private fun count(s: Song) = prefs.getInt("pc_" + s.key, 0)
     private fun shuffleOn() = prefs.getBoolean("shuffle", false)
     private fun repeatMode() = prefs.getInt("repeat", 0)
-    private fun onOff(b: Boolean) = if (b) "[ON]" else "[OFF]"
+    private fun onOff(b: Boolean) = if (b) "ON" else "OFF"
     private fun audioPerm() = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO
                               else Manifest.permission.READ_EXTERNAL_STORAGE
     private fun granted(p: String) = Build.VERSION.SDK_INT < 23 || checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
@@ -87,9 +92,11 @@ class MainActivity : Activity(), VinylView.Listener {
         override fun getView(pos: Int, v: View?, parent: ViewGroup): View {
             val s = items[pos]
             val t = (v as? TextView) ?: TextView(context)
-            t.text = (if (likes.contains(s.key)) "<3 " else "   ") + s.title + (if (counts) "  x" + count(s) else "")
-            t.setTextColor(if (s.key == cur?.key) Color.WHITE else green)
-            t.typeface = Typeface.MONOSPACE
+            val now = s.key == cur?.key
+            t.text = (if (now) "> " else "  ") + (if (likes.contains(s.key)) "<3 " else "   ") + s.title + (if (counts) "  x" + count(s) else "")
+            t.setTextColor(if (now) Color.WHITE else green)
+            t.typeface = Typeface.create(Typeface.MONOSPACE, if (now) Typeface.BOLD else Typeface.NORMAL)
+            t.setShadowLayer(6f, 0f, 0f, glow)
             t.setPadding(16, 22, 16, 22); t.isSingleLine = true
             return t
         }
@@ -110,11 +117,13 @@ class MainActivity : Activity(), VinylView.Listener {
         prefs = getSharedPreferences("retro", MODE_PRIVATE)
         likes.addAll(prefs.getStringSet("likes", null) ?: emptySet())
         vinyl = findViewById(R.id.vinyl); vinyl.listener = this
-        titleV = findViewById(R.id.title); timeV = findViewById(R.id.time); seek = findViewById(R.id.seek)
+        titleV = findViewById(R.id.title); timeV = findViewById(R.id.time); trackNo = findViewById(R.id.trackno)
+        seek = findViewById(R.id.seek)
         playB = findViewById(R.id.b_play); likeB = findViewById(R.id.b_like)
         shufB = findViewById(R.id.b_shuf); repB = findViewById(R.id.b_rep)
         scan = findViewById(R.id.scan); empty2 = findViewById(R.id.empty2); empty3 = findViewById(R.id.empty3)
         settingsBox = findViewById(R.id.settings)
+        heads = listOf(R.id.head1, R.id.head2, R.id.head3).map { findViewById<TextView>(it) }
         pages = listOf(R.id.page0, R.id.page1, R.id.page2, R.id.page3, R.id.page4).map { findViewById<View>(it) }
         navs = listOf(R.id.nav0, R.id.nav1, R.id.nav2, R.id.nav3, R.id.nav4).map { findViewById<View>(it) }
         navIcons = listOf(R.id.ni0, R.id.ni1, R.id.ni2, R.id.ni3, R.id.ni4).map { findViewById<ImageView>(it) }
@@ -165,14 +174,36 @@ class MainActivity : Activity(), VinylView.Listener {
     override fun onBackPressed() { if (page != 0) showPage(0) else moveTaskToBack(true) }
 
     // ---------- settings page ----------
-    private fun addRow(label: () -> String, tap: (() -> Unit)?) {
-        val t = TextView(this)
-        t.typeface = Typeface.MONOSPACE; t.textSize = 15f; t.setTextColor(green); t.setPadding(24, 30, 24, 30)
-        val upd = { t.text = label() }
+    private fun section(t: String) {
+        val v = TextView(this)
+        v.text = "-- $t --"; v.typeface = Typeface.MONOSPACE; v.textSize = 12f
+        v.setTextColor(dimGreen); v.setPadding(24, 28, 24, 6)
+        settingsBox.addView(v, LinearLayout.LayoutParams(-1, -2))
+    }
+
+    private fun addRow(label: String, value: (() -> String)?, tap: (() -> Unit)?) {
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL; row.gravity = Gravity.CENTER_VERTICAL; row.setPadding(24, 22, 24, 22)
+        val l = TextView(this)
+        l.text = label; l.typeface = Typeface.MONOSPACE; l.textSize = 15f; l.setTextColor(green); l.setShadowLayer(6f, 0f, 0f, glow)
+        row.addView(l, LinearLayout.LayoutParams(0, -2, 1f))
+        var upd: () -> Unit = {}
+        if (value != null) {
+            val v = TextView(this)
+            v.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD); v.textSize = 14f; v.setPadding(22, 8, 22, 8)
+            upd = {
+                val x = value()
+                v.text = x
+                if (tap == null) { v.background = null; v.setTextColor(green) }
+                else if (x == "OFF" || x == "RUN") { v.setBackgroundResource(R.drawable.box_off); v.setTextColor(if (x == "OFF") dimGreen else green) }
+                else { v.setBackgroundColor(green); v.setTextColor(Color.BLACK) }
+            }
+            row.addView(v)
+        }
         upd(); rows.add(upd)
-        if (tap != null) t.setOnClickListener { tap(); rows.forEach { it() } }
-        settingsBox.addView(t, LinearLayout.LayoutParams(-1, -2))
-        val d = View(this); d.setBackgroundColor(Color.parseColor("#1A3A1A"))
+        if (tap != null) row.setOnClickListener { tap(); rows.forEach { it() } }
+        settingsBox.addView(row, LinearLayout.LayoutParams(-1, -2))
+        val d = View(this); d.setBackgroundColor(Color.parseColor("#12301A"))
         settingsBox.addView(d, LinearLayout.LayoutParams(-1, 2))
     }
 
@@ -181,26 +212,31 @@ class MainActivity : Activity(), VinylView.Listener {
     }
 
     private fun buildSettings() {
-        addRow({ "SHUFFLE ......... " + onOff(shuffleOn()) }) { setShuffle(!shuffleOn()) }
-        addRow({ "REPEAT .......... " + arrayOf("OFF", "ALL", "ONE")[repeatMode()] }) { cycleRepeat() }
-        addRow({ "SCANLINES ....... " + onOff(prefs.getBoolean("scan", true)) }) {
+        section("PLAYBACK")
+        addRow("SHUFFLE", { onOff(shuffleOn()) }) { setShuffle(!shuffleOn()) }
+        addRow("REPEAT", { arrayOf("OFF", "ALL", "ONE")[repeatMode()] }) { cycleRepeat() }
+        section("DISPLAY")
+        addRow("SCANLINES", { onOff(prefs.getBoolean("scan", true)) }) {
             prefs.edit().putBoolean("scan", !prefs.getBoolean("scan", true)).apply(); applyLook()
         }
-        addRow({ "VINYL SPEED ..... " + prefs.getInt("rpm", 33) + " RPM" }) {
+        addRow("VINYL SPEED", { prefs.getInt("rpm", 33).toString() + " RPM" }) {
             prefs.edit().putInt("rpm", if (prefs.getInt("rpm", 33) == 33) 45 else 33).apply(); applyLook()
         }
-        addRow({ "KEEP SCREEN ON .. " + onOff(prefs.getBoolean("awake", false)) }) {
+        addRow("KEEP SCREEN ON", { onOff(prefs.getBoolean("awake", false)) }) {
             prefs.edit().putBoolean("awake", !prefs.getBoolean("awake", false)).apply(); applyLook()
         }
-        addRow({ "> RESET PLAY COUNTS" }) {
+        section("DATA")
+        addRow("RESET PLAY COUNTS", { "RUN" }) {
             confirm("Reset all play counts?") {
                 val e = prefs.edit(); all.forEach { e.remove("pc_" + it.key) }; e.apply(); refresh()
             }
         }
-        addRow({ "> CLEAR ALL LIKES" }) {
+        addRow("CLEAR ALL LIKES", { "RUN" }) {
             confirm("Remove all likes?") { likes.clear(); prefs.edit().remove("likes").apply(); refresh() }
         }
-        addRow({ "RETRO PLAYER v1.0  (" + all.size + " TRACKS)" }, null)
+        section("ABOUT")
+        addRow("TRACKS FOUND", { all.size.toString() }, null)
+        addRow("VERSION", { "1.0" }, null)
     }
 
     private fun applyLook() {
@@ -225,11 +261,12 @@ class MainActivity : Activity(), VinylView.Listener {
     private fun showPage(i: Int) {
         page = i
         pages.forEachIndexed { k, p -> p.visibility = if (k == i) View.VISIBLE else View.GONE }
+        pages[i].alpha = 0f; pages[i].animate().alpha(1f).setDuration(180).start()
         for (k in 0..4) {
             val on = k == i
             navIcons[k].alpha = if (on) 1f else 0.4f
             navLabels[k].setTextColor(if (on) Color.WHITE else green)
-            navs[k].setBackgroundColor(if (on) Color.parseColor("#102010") else Color.TRANSPARENT)
+            if (on) navs[k].setBackgroundResource(R.drawable.nav_on) else navs[k].background = null
         }
     }
 
@@ -257,6 +294,7 @@ class MainActivity : Activity(), VinylView.Listener {
         vinyl.setNeedle(pl)
         shufB.alpha = if (shuffleOn()) 1f else 0.35f
         repB.alpha = if (repeatMode() == 0) 0.35f else 1f
+        trackNo.text = if (s != null && s.current != null) String.format("%02d/%02d", s.idx + 1, s.queue.size) else "--/--"
         rows.forEach { it() }
         refresh()
     }
@@ -265,6 +303,9 @@ class MainActivity : Activity(), VinylView.Listener {
         liked.clear(); liked.addAll(all.filter { likes.contains(it.key) })
         top.clear(); top.addAll(all.filter { count(it) > 0 }.sortedByDescending { count(it) }.take(50))
         adapters.forEach { it.notifyDataSetChanged() }
+        heads[0].text = "> LIBRARY [" + all.size + "]"
+        heads[1].text = "> LIKED [" + liked.size + "]"
+        heads[2].text = "> TOP PLAYED [" + top.size + "]"
         empty2.visibility = if (liked.isEmpty()) View.VISIBLE else View.GONE
         empty3.visibility = if (top.isEmpty()) View.VISIBLE else View.GONE
         likeB.alpha = if (cur != null && likes.contains(cur!!.key)) 1f else 0.35f

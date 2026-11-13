@@ -7,14 +7,21 @@
         <item name="android:colorControlActivated">#33FF33</item>
     </style>
     <style name="IconBtn">
-        <item name="android:background">#00000000</item>
+        <item name="android:background">?android:attr/selectableItemBackgroundBorderless</item>
         <item name="android:padding">12dp</item>
         <item name="android:scaleType">fitCenter</item>
     </style>
-    <style name="Head">
+    <style name="Glow">
         <item name="android:textColor">#33FF33</item>
         <item name="android:typeface">monospace</item>
+        <item name="android:shadowColor">#8033FF33</item>
+        <item name="android:shadowRadius">6</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">0</item>
+    </style>
+    <style name="Head" parent="Glow">
         <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
         <item name="android:padding">12dp</item>
         <item name="android:background">#102010</item>
     </style>

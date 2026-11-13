@@ -13,7 +13,7 @@ class VinylView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) :
     interface Listener { fun onDrop(); fun onLift() }
 
     var listener: Listener? = null
-    var speed = 200f
+    var speed = 200f // degrees per second (33 rpm = 200, 45 rpm = 270)
     var needleDown = false
         private set
 
@@ -61,6 +61,9 @@ class VinylView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) :
         last = if (needleDown) now else 0L
         cv.drawColor(Color.BLACK)
 
+        // soft phosphor glow around the record
+        p.style = Paint.Style.STROKE
+        for (k in 1..3) { p.strokeWidth = 3 * dp; p.color = Color.argb(46 / k, 51, 255, 51); cv.drawCircle(cx, cy, r + k * 2.5f * dp, p) }
         // record + grooves
         p.style = Paint.Style.FILL; p.color = Color.parseColor("#061406"); cv.drawCircle(cx, cy, r, p)
         p.style = Paint.Style.STROKE; p.strokeWidth = 1.5f * dp; p.color = g; cv.drawCircle(cx, cy, r, p)
@@ -89,7 +92,23 @@ class VinylView @JvmOverloads constructor(c: Context, a: AttributeSet? = null) :
         cv.drawCircle(px, py, 9 * dp, p)
         p.color = Color.BLACK; cv.drawCircle(px, py, 4 * dp, p); cv.drawCircle(tx, ty, 1.5f * dp, p)
 
-        // text + frame
+        // decorative LED equalizer (animates while the needle is down)
+        val t = (now % 100_000_000_000L) / 1e9f
+        val bw = 7 * dp; val gap = 3 * dp
+        val x0 = width - 10 * (bw + gap) - 8 * dp
+        val base = height - 10 * dp
+        p.style = Paint.Style.FILL
+        for (i in 0 until 10) {
+            val lvl = if (needleDown) 0.5f + 0.5f * sin(t * (3f + i * 0.9f) + i * 1.7f) else 0f
+            val n = 1 + (lvl * 7).toInt()
+            for (s in 0 until n) {
+                p.color = if (needleDown && s == n - 1 && n > 1) Color.WHITE else g
+                val y = base - s * 4 * dp
+                cv.drawRect(x0 + i * (bw + gap), y - 3 * dp, x0 + i * (bw + gap) + bw, y, p)
+            }
+        }
+
+        // hint text + frame
         p.color = g; p.textSize = 11 * dp
         cv.drawText(if (needleDown) "> NOW SPINNING" else "> DRAG NEEDLE ONTO DISC", 8 * dp, height - 8 * dp, p)
         p.style = Paint.Style.STROKE; p.strokeWidth = dp; p.color = dim
